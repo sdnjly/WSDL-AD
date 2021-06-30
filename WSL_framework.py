@@ -181,8 +181,8 @@ def WSL_model(categories=3, ecg_length=None,
     else:
         merged_features = ecg_features_map
 
-    prediction_map = TimeDistributed(Dense(categories, kernel_regularizer=l2_reg,
-                                           activation='softmax', name=local_output_layer_name))(merged_features)
+    prediction_map = TimeDistributed(Dense(categories, kernel_regularizer=l2_reg, activation='softmax'),
+                                     name=local_output_layer_name)(merged_features)
 
     if supervisedMode == 'WSL':
         if aggreg_type == 'MGMP':
