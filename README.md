@@ -2,14 +2,14 @@
 
 This repository contains code for the paper:
 
-**Weakly Supervised Arrhythmia Detection with Multilevel Prediction Fusion and RR-guided Aggregation**
+**Weakly supervised deep learning for generalizable beat-by-beat arrhythmia detections**
 
-Yang Liu, Qince Li, Runnan He, Yongfeng Yuan, Yong Xia, Kuanquan Wang, Henggui Zhang
+Yang Liu, Qince Li, Kuanquan Wang, Runnan He, Yongfeng Yuan, Jun Liu, Yong Xia, Henggui Zhang
 
 School of Computer Science and Technology, Harbin Institute of Technology (HIT), Harbin, Heilongjiang, China.
 
 **Abstract:**
-Supervised deep learning has been widely used in the studies of automatic ECG classification, which largely benefits from large datasets. However, in view of time and economic cost of annotation, most of the existing large ECG datasets are coarsely annotated, where the annotations contains only the types of ECG event in a recording and not the exact time of occurrence. The exploration of methods to use these large coarsely-annotated datasets to train a fine classifier that can determine the exact occurrence time of ECG events not only helps to reduce the annotation cost, but also has the potential to improve the generalization performance of the classifier. In this paper, we propose a novel framework to detect supraventricular ectopic heartbeats (SVEB) and ventricular ectopic heartbeats (VEB) in an ECG recording based on the idea of weakly supervised learning (WSL), where the model first makes local predictions and then aggregates the local predictions to infer the existence of each event in the global scope. We analyze the challenges of WSL for arrhythmia detection, including heterogeneity of ECG features, relevance of context information and the ill-posed problem of local prediction. To address these challenges, we design novel RR-interval features extraction and enhancement methods, weighted fusion method for multi-level predictions, and RR-guided aggregation method. We use the datasets from the Physionet/CinC Challenge 2020 for model training, and MIT-BIT Arrhythmia Database for evaluation. The results show that with only weakly supervised training on the large datasets, the model achieves F1 scores of 0.8018 and 0.9058 in detecting SVEB and VEB on the MITDB respectively, which are better than their fully supervised counterparts trained on small fine-gained datasets, demonstrating the effectiveness.
+Supervised learning (SL) methods for beat-by-beat arrhythmia detection suffer from poor generalization ability due to the lack of large-sample and finely-annotated (every beat is labeled) electrocardiogram (ECG) data for model training. Although ECG data with coarse-grained annotations (an ECG recording is labeled as a unit) are readily available, the SL-based models trained on them generally can only classify whole recordings rather than individual heartbeats, which fails to meet some clinical needs, such as measuring the frequency and burden of arrhythmias. In this work, we propose a weakly supervised deep learning framework for arrhythmia detection (WSDL-AD), which permits training a fine-grained (beat-by-beat) arrhythmia detector with large amounts of coarsely annotated ECG data to improve the generalization ability. In this framework, heartbeat classification and recording classification are integrated into a deep neural network for end-to-end training with only recording labels. Several techniques, including knowledge-based features, masked aggregation, and supervised pre-training, are proposed to improve the accuracy and stability of the heartbeat classification under weak supervision. We evaluate our framework for the detection of ventricular ectopic beats and supraventricular ectopic beats on three independent benchmarks according to the recommendations from the Association for the Advancement of Medical Instrumentation (AAMI). Our WSDL-AD model significantly outperforms its SL-based counterpart and also other state-of-the-art methods on these benchmarks. It demonstrates that the WSDL-AD framework can leverage the abundant coarsely-labeled data to achieve a better generalization ability than previous methods while maintaining fine detection granularity. Therefore, this framework has a great potential to be used in clinical and telehealth applications.
 
 ![avatar](images/graph_abstract.png)
 
@@ -35,126 +35,149 @@ This script just needs to be run once before the first time of model training.
 python QRS_detection.py --cinc_path $path_of_cinc_db
 ```
 
-## Fully-supervised model training and testing
+## Supervised learning (SL) setting
  ```
-python main.py --mitdb_path $path_of_mitdb \
+python main.py --cinc_path $path_of_the_training_data \
+               --mitdb_path $path_of_mitdb \
                --testset_base_path $home_path_of_testsets \
                --supervisedMode 'SL' \
+               --denoise --normalization \
                --feature_fusion_with_rrs \
                --feature_fusion_with_entropy \
-               --only_output_foreground \
+               --aggreg_type MGMP \
                --log_file results/Fully_supervised.csv \
-               --training_number 5 
+               --training_number 1
 ```
 
-## Weakly supervised model training and testing
+## Weakly supervised learning (WSL) setting
+```
+python main.py --cinc_path $path_of_the_training_data \
+               --mitdb_path $path_of_mitdb \
+                --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type MGMP \
+                --log_file results/main_WSL.csv \
+                --training_number 1
+```
+
+## SL + WSL setting
 * Recommended model training
 ```
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
                --testset_base_path $home_path_of_testsets \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --only_output_foreground \
-               --log_file results/main.csv --training_number 5
-```
-* Ablation studies for hand-crafted features
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type MGMP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_features.csv \
+                --training_number 1
+``` 
+## Ablation studies
+* Ablation studies for knowledge-based features
 ```
 # No hand-crafted feature 
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --log_file results/no_hand_features.csv \
-               --training_number 5
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --aggreg_type MGMP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_features.csv \
+                --training_number 1
 ```
 ```
 # with only relative RR interval
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --log_file results/with_only_rrs.csv \
-               --training_number 5
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --aggreg_type MGMP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_features.csv \
+                --training_number 1
 ```
 ```
 # with only RR entropy
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_entropy \
-               --log_file results/with_only_entropy.csv \
-               --training_number 5
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_entropy \
+                --aggreg_type MGMP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_features.csv \
+                --training_number 1
 ```
-* Ablation studies for prediction fusion
-```
-# no fusion
-python main.py --cinc_path $path_of_cinc_db \
-               --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --predFusionMode 'No' \
-               --log_file results/no_prediction_fusion.csv \
-               --training_number 5 
-```
+
 * Ablation studies for aggregation
 ```
 # GMP
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --aggreg_type 'GMP' \
-               --log_file results/GMP.csv \
-               --training_number 5 
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type GMP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_aggregation.csv \
+                --training_number 1 
 ```
 ```
-# GMRP
-python main.py --cinc_path $path_of_cinc_db \
+# GAP
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --aggreg_type 'GMRP' \
-               --log_file results/GMRP.csv \
-               --training_number 5 
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type GAP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_aggregation.csv \
+                --training_number 1 
 ```
 ```
-# LSER r=3
-python main.py --cinc_path $path_of_cinc_db \
+# LSE
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --aggreg_type 'LSER' \
-               --LSE_r 3 \
-               --log_file results/LSER_r3.csv \
-               --training_number 5
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type LSE --LSE_r 5 \
+                --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_ablation_aggregation.csv \
+                --training_number 1 
 ```
+## Assess the training stability in multiple sessions of training 
+* Training stability of the WSL setting
 ```
-# LSER r=5
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --aggreg_type 'LSER' \
-               --LSE_r 5 \
-               --log_file results/LSER_r5.csv \
-               --training_number 5
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type MGMP \
+                --log_file results/main_stability_WSL.csv \
+                --training_number 50
+``` 
+* Training stability of the SL+WSL setting
 ```
-```
-# RRGA-solo
-python main.py --cinc_path $path_of_cinc_db \
+python main.py --cinc_path $path_of_the_training_data \
                --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --aggreg_type 'RRguided_gmp' \
-               --balance_factor 1 \
-               --log_file results/RRguided_solo.csv \
-               --training_number 5
-```
-* Ablation for FPN-based multi-level feature fusion
- ```
-# with FPN-based multi-level feature fusion
-python main.py --cinc_path $path_of_cinc_db \
-               --mitdb_path $path_of_mitdb \
-               --feature_fusion_with_rrs \
-               --feature_fusion_with_entropy \
-               --featureFusionMode 'FPN' \
-               --log_file results/FPN_feature_fusion.csv \
-               --training_number 5
-```
+               --testset_base_path $home_path_of_testsets \
+                --denoise --normalization \
+                --feature_fusion_with_rrs \
+                --feature_fusion_with_entropy \
+                --aggreg_type MGMP --initialize_with_SL \
+                --initialize_data_proportion 0.5 \
+                --log_file results/main_stability_SL_WSL.csv \
+                --training_number 1
+``` 
