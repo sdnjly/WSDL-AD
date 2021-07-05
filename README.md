@@ -25,9 +25,9 @@ Supervised learning (SL) methods for beat-by-beat arrhythmia detection suffer fr
 
   Download the [dataset](https://physionet.org/content/mitdb/1.0.0/).
   
-* Physionet/CinC challenge 2020 dataset
+* Physionet/CinC challenge 2021 dataset
 
-  Download the [dataset](https://physionetchallenges.org/2020/)
+  Download the [dataset](https://physionetchallenges.org/2021/)
 
 ## Detect the QRSs and store them in files
 This script just needs to be run once before the first time of model training.
